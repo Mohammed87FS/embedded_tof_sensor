@@ -5,7 +5,7 @@ FH Wiener Neustadt — Embedded Systems
 ## Overview
 Distance measurement GUI using the VL53L3CX Time-of-Flight sensor on a Raspberry Pi 5.
 
-- **Sensor:** VL53L3CX (I²C, multi-target, up to 3m range)
+- **Sensor:** VL53L3CX (I²C, up to 3m range)
 - **Platform:** Raspberry Pi 5, Raspberry Pi OS (Bookworm 64-bit)
 - **GUI:** PyQt6 + pyqtgraph
 - **Real-Time:** Not required (sensor max 30 Hz, GUI latency ~50-100ms)
@@ -15,6 +15,12 @@ Distance measurement GUI using the VL53L3CX Time-of-Flight sensor on a Raspberry
 |------|-------|
 | Hardware (Kollege) | Sensor wiring, I²C bus, power, PCB |
 | Software (Mohammed) | Linux setup, I²C driver, data pipeline, GUI |
+
+## Branches
+| Branch | Description |
+|--------|-------------|
+| `master` | Single-target mode — simple distance + graph + sonar |
+| `feature/multi-target` | Multi-object detection, dual-target display, 3D view (pyqtgraph.opengl) |
 
 ## Project Structure
 ```
@@ -33,6 +39,9 @@ embedded_tof_sensor/
 
 ## Quick Start (Development on Laptop with Dummy Data)
 ```bash
+python -m venv .venv
+.venv\Scripts\activate       # Windows
+# source .venv/bin/activate  # Linux/Pi
 pip install -r requirements.txt
 python src/main.py
 ```
