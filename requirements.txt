@@ -1,4 +1,4 @@
 PyQt6>=6.7,<6.8
 pyqtgraph>=0.13
-numpy>=1.26
+numpy>=1.26,<2
 smbus2>=0.4

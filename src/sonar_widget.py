@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QWidget
 
 
 class SonarWidget(QWidget):
-    MAX_RANGE_MM = 3000
+    MAX_RANGE_MM = 5000
     RING_COUNT = 6
     HISTORY_SIZE = 60
 

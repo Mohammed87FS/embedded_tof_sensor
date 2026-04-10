@@ -19,7 +19,9 @@ from sonar_widget import SonarWidget
 
 class MainWindow(QMainWindow):
     BUFFER_SIZE = 200
-    UPDATE_INTERVAL_MS = 100
+    # ~20 Hz UI; VL53L3CX timing budget 50 ms caps useful rate near 15–20 Hz
+    UPDATE_INTERVAL_MS = 50
+    DISPLAY_MAX_MM = 5000
 
     def __init__(self, sensor: BaseSensor):
         super().__init__()
@@ -83,7 +85,7 @@ class MainWindow(QMainWindow):
         self._plot_widget = pg.PlotWidget(title="Distance Over Time")
         self._plot_widget.setLabel("left", "Distance", units="mm")
         self._plot_widget.setLabel("bottom", "Samples")
-        self._plot_widget.setYRange(0, 3000)
+        self._plot_widget.setYRange(0, self.DISPLAY_MAX_MM)
         self._plot_widget.setBackground("#1a1a1a")
         self._plot_curve = self._plot_widget.plot(
             pen=pg.mkPen(color="#00ff55", width=2)
@@ -142,6 +144,12 @@ class MainWindow(QMainWindow):
             self._dist_label.setText(f"{reading.distance_mm} mm")
             color = "#00cc44" if reading.distance_mm > 300 else "#ff4444"
             self._dist_label.setStyleSheet(f"color: {color};")
+        elif reading.status == 2:
+            self._dist_label.setText("…")
+            self._dist_label.setStyleSheet("color: #888;")
+        elif reading.status == 4:
+            self._dist_label.setText("NO TARGET")
+            self._dist_label.setStyleSheet("color: #ffaa44;")
         else:
             self._dist_label.setText("ERR")
             self._dist_label.setStyleSheet("color: #ff4444;")
@@ -153,7 +161,10 @@ class MainWindow(QMainWindow):
             self._min_label.setText(f"Min: {int(valid_data.min())} mm")
             self._max_label.setText(f"Max: {int(valid_data.max())} mm")
             self._avg_label.setText(f"Avg: {int(valid_data.mean())} mm")
-        self._signal_label.setText(f"Signal: {reading.signal_rate:.1f}")
+        if reading.signal_rate > 0:
+            self._signal_label.setText(f"Signal: {reading.signal_rate:.1f}")
+        else:
+            self._signal_label.setText("Signal: —")
 
         self._plot_curve.setData(data_slice)
         self._sonar.update_distance(reading.distance_mm)
