@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
 
 from sensor import BaseSensor
 from sonar_widget import SonarWidget
+from gpio_controller import GPIOController
 
 
 class MainWindow(QMainWindow):
@@ -23,9 +24,11 @@ class MainWindow(QMainWindow):
     UPDATE_INTERVAL_MS = 50
     DISPLAY_MAX_MM = 5000
 
-    def __init__(self, sensor: BaseSensor):
+    def __init__(self, sensor: BaseSensor, auto_start: bool = False,
+                 gpio: bool = False):
         super().__init__()
         self._sensor = sensor
+        self._gpio = GPIOController(enabled=gpio)
         self._running = False
         self._data_buffer = np.zeros(self.BUFFER_SIZE)
         self._buf_idx = 0
@@ -34,6 +37,9 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 600)
         self._setup_ui()
         self._setup_timer()
+
+        if auto_start:
+            self._on_start()
 
     def _setup_ui(self) -> None:
         central = QWidget()
@@ -120,6 +126,16 @@ class MainWindow(QMainWindow):
         self._timer.setInterval(self.UPDATE_INTERVAL_MS)
         self._timer.timeout.connect(self._tick)
 
+        # Always-on poll for the physical button (works while stopped too)
+        self._btn_timer = QTimer(self)
+        self._btn_timer.setInterval(100)
+        self._btn_timer.timeout.connect(self._poll_button)
+        self._btn_timer.start()
+
+    def _poll_button(self) -> None:
+        if self._gpio.take_button_event():
+            self._on_stop() if self._running else self._on_start()
+
     def _on_start(self) -> None:
         self._sensor.start()
         self._running = True
@@ -130,6 +146,7 @@ class MainWindow(QMainWindow):
     def _on_stop(self) -> None:
         self._timer.stop()
         self._sensor.stop()
+        self._gpio.all_off()
         self._running = False
         self._start_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
@@ -155,8 +172,13 @@ class MainWindow(QMainWindow):
             self._dist_label.setStyleSheet("color: #ff4444;")
 
         filled = min(self._buf_idx, self.BUFFER_SIZE)
-        data_slice = self._data_buffer[:filled]
-        valid_data = data_slice[data_slice > 0]
+        if self._buf_idx >= self.BUFFER_SIZE:
+            # Unroll ring buffer into chronological order (oldest → newest)
+            ordered = np.roll(self._data_buffer, -(self._buf_idx % self.BUFFER_SIZE))
+        else:
+            ordered = self._data_buffer[:filled]
+
+        valid_data = ordered[ordered > 0]
         if len(valid_data) > 0:
             self._min_label.setText(f"Min: {int(valid_data.min())} mm")
             self._max_label.setText(f"Max: {int(valid_data.max())} mm")
@@ -166,10 +188,12 @@ class MainWindow(QMainWindow):
         else:
             self._signal_label.setText("Signal: —")
 
-        self._plot_curve.setData(data_slice)
+        self._plot_curve.setData(ordered)
         self._sonar.update_distance(reading.distance_mm)
+        self._gpio.update(reading.distance_mm, reading.status)
 
     def closeEvent(self, event) -> None:
         if self._running:
             self._on_stop()
+        self._gpio.close()
         event.accept()

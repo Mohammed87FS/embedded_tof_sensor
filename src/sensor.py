@@ -88,14 +88,16 @@ class VL53L3CXSensor(BaseSensor):
     def __init__(
         self,
         i2c_bus: int = 1,
-        i2c_address: int = 0x29,
+        i2c_address: int = 0x29,  # VL53L3CX 7-bit addr (0x52 8-bit) — i2cdetect shows 0x29
         distance_mode: int = 3,
         timing_budget_us: int = 50_000,
+        stale_timeout_s: float = 0.5,
     ):
         self._i2c_bus = i2c_bus
         self._i2c_address = i2c_address
         self._distance_mode = distance_mode
         self._timing_budget_us = timing_budget_us
+        self._stale_timeout_s = stale_timeout_s
         self._tof: Any = None
         self._last: Optional[SensorReading] = None
 
@@ -124,7 +126,9 @@ class VL53L3CXSensor(BaseSensor):
             raise RuntimeError("Sensor not started")
 
         if not self._tof.is_ranging_ready():
-            if self._last is not None:
+            # Return cached reading only if fresh; otherwise report "waiting"
+            if (self._last is not None
+                    and (time.time() - self._last.timestamp) < self._stale_timeout_s):
                 return self._last
             return SensorReading(distance_mm=0, status=2)
 
