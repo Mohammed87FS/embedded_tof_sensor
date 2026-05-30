@@ -148,7 +148,7 @@ class VL53L3CX:
 
     def stop_ranging(self):
         """Stop VL53L3CX ToF Sensor Ranging"""
-        print(_TOF_LIBRARY.stopRanging(self._dev))
+        return _TOF_LIBRARY.stopRanging(self._dev)
 
     def get_distance(self):
         """Get distance from VL53L3CX ToF Sensor"""

@@ -44,6 +44,11 @@ def main():
         default=50_000,
         help="Measurement timing budget in microseconds (default: 50000)",
     )
+    parser.add_argument(
+        "--gpio",
+        action="store_true",
+        help="Drive LED bar / buzzer / button / status LED (Raspberry Pi only)",
+    )
     args = parser.parse_args()
 
     if args.real_sensor:
@@ -62,7 +67,7 @@ def main():
         sensor = DummySensor()
 
     app = QApplication(sys.argv)
-    window = MainWindow(sensor)
+    window = MainWindow(sensor, auto_start=args.real_sensor, gpio=args.gpio)
     window.show()
     sys.exit(app.exec())
 
