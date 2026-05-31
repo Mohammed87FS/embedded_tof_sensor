@@ -13,8 +13,8 @@ from sensor import VL53L3CXSensor
 
 # --- Wiring (BCM GPIO numbers) ---
 GREEN = LED(17)                                  # physical pin 11
-YELLOW = LED(27)                                 # physical pin 13
-RED = LED(22)                                     # physical pin 15
+YELLOW = LED(23)                                  # physical pin 16
+RED = LED(21)                                      # physical pin 40
 buzzer = PWMOutputDevice(18, frequency=1500)     # physical pin 12
 
 # --- Distance thresholds in mm (tune for your demo) ---
