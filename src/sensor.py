@@ -10,6 +10,7 @@ Install on the Pi (full driver; PyPI sdist is incomplete — use Git):
 import random
 import math
 import time
+import socket
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -160,3 +161,48 @@ class VL53L3CXSensor(BaseSensor):
                 pass
             self._tof = None
         self._last = None
+
+
+class NetworkSensor(BaseSensor):
+    """
+    Reads sensor data from a Raspberry Pi running sensor_server.py over the LAN.
+    Lets the PyQt GUI run natively on a laptop while the real sensor stays on the Pi.
+
+    Protocol: client sends a byte, server replies "distance_mm,status\\n".
+    """
+
+    def __init__(self, host: str, port: int = 9999, timeout: float = 5.0):
+        self._host = host
+        self._port = port
+        self._timeout = timeout
+        self._sock: Optional[socket.socket] = None
+        self._buf = b""
+
+    def start(self) -> None:
+        self._sock = socket.create_connection((self._host, self._port), timeout=self._timeout)
+        self._sock.settimeout(self._timeout)
+        self._buf = b""
+
+    def read(self) -> SensorReading:
+        if self._sock is None:
+            raise RuntimeError("NetworkSensor not started")
+        try:
+            self._sock.sendall(b"r")
+            while b"\n" not in self._buf:
+                data = self._sock.recv(64)
+                if not data:
+                    return SensorReading(distance_mm=0, status=1)
+                self._buf += data
+            line, self._buf = self._buf.split(b"\n", 1)
+            dist_s, status_s = line.decode().strip().split(",")
+            return SensorReading(distance_mm=int(dist_s), status=int(status_s))
+        except (socket.timeout, OSError, ValueError):
+            return SensorReading(distance_mm=0, status=1)
+
+    def stop(self) -> None:
+        if self._sock is not None:
+            try:
+                self._sock.close()
+            except Exception:
+                pass
+            self._sock = None

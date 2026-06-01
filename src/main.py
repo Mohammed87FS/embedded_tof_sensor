@@ -8,7 +8,7 @@ import argparse
 
 from PyQt6.QtWidgets import QApplication
 
-from sensor import DummySensor, VL53L3CXSensor
+from sensor import DummySensor, VL53L3CXSensor, NetworkSensor
 from gui import MainWindow
 
 
@@ -49,9 +49,18 @@ def main():
         action="store_true",
         help="Drive LED bar / buzzer / button / status LED (Raspberry Pi only)",
     )
+    parser.add_argument(
+        "--network",
+        metavar="HOST",
+        help="Stream from a Pi running sensor_server.py at HOST (e.g. 192.168.7.2). "
+             "Runs the GUI locally on this machine with live remote data.",
+    )
     args = parser.parse_args()
 
-    if args.real_sensor:
+    if args.network:
+        print(f"Streaming from Pi sensor server at {args.network}:9999 ...")
+        sensor = NetworkSensor(host=args.network)
+    elif args.real_sensor:
         print(
             f"Using real VL53L3CX on I²C bus {args.i2c_bus}, address 0x{args.i2c_address:02x}, "
             f"mode {args.distance_mode}, budget {args.timing_budget_us} µs..."
@@ -66,8 +75,9 @@ def main():
         print("Using dummy sensor (development mode)...")
         sensor = DummySensor()
 
+    auto_start = args.real_sensor or bool(args.network)
     app = QApplication(sys.argv)
-    window = MainWindow(sensor, auto_start=args.real_sensor, gpio=args.gpio)
+    window = MainWindow(sensor, auto_start=auto_start, gpio=args.gpio)
     window.show()
     sys.exit(app.exec())
 
