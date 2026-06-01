@@ -22,7 +22,7 @@ class MainWindow(QMainWindow):
     BUFFER_SIZE = 200
     # ~20 Hz UI; VL53L3CX timing budget 50 ms caps useful rate near 15–20 Hz
     UPDATE_INTERVAL_MS = 50
-    DISPLAY_MAX_MM = 5000
+    DISPLAY_MAX_MM = 700        # default display range; user-adjustable up to SENSOR_MAX_MM
     SENSOR_MAX_MM = 5000        # hard cap: don't let the UI exceed the sensor's range
 
     def __init__(self, sensor: BaseSensor, auto_start: bool = False,
@@ -113,6 +113,7 @@ class MainWindow(QMainWindow):
         right.addWidget(self._plot_widget, stretch=2)
 
         self._sonar = SonarWidget()
+        self._sonar.set_max_range(self.DISPLAY_MAX_MM)
         right.addWidget(self._sonar, stretch=2)
 
         root.addLayout(right, stretch=2)
