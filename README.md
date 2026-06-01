@@ -22,21 +22,40 @@ Distance measurement GUI using the VL53L3CX Time-of-Flight sensor on a Raspberry
 | `master` | Single-target mode — simple distance + graph + sonar |
 | `feature/multi-target` | Multi-object detection, dual-target display, 3D view (pyqtgraph.opengl) |
 
+## Architecture
+The sensor runs on the Pi; the GUI runs on a laptop. The Pi streams live readings
+over a TCP socket, so the PyQt GUI renders locally (no lag, no remote desktop).
+The transport is interchangeable — Ethernet, Wi-Fi, or a USB-C gadget link all work.
+
+```
+  [VL53L3CX] --I²C--> [Raspberry Pi: sensor_server.py] --TCP/9999--> [Laptop: main.py --network]
+```
+
 ## Project Structure
 ```
 embedded_tof_sensor/
 ├── src/
-│   ├── main.py              # Entry point
-│   ├── sensor.py            # Sensor abstraction (real + dummy)
+│   ├── main.py              # Entry point (dummy / real / --network modes)
+│   ├── sensor.py            # Sensor abstraction: Dummy, VL53L3CX, NetworkSensor
+│   ├── sensor_server.py     # Pi-side: streams sensor readings over TCP
 │   ├── gui.py               # PyQt6 main window
-│   └── sonar_widget.py      # Sonar/radar visualization
+│   ├── sonar_widget.py      # Sonar/radar visualization
+│   └── vl53l3cx_driver.py   # Vendored ST VL53LX bindings (ctypes + smbus2)
 ├── docs/
 │   └── real_time_decision.md # RT vs non-RT justification
-├── tests/
+├── electronics_imgs/        # Component photos + wiring notes
 ├── requirements.txt
 ├── requirements-rpi.txt     # Pi + VL53L3CX native driver (from Git)
 └── README.md
 ```
+
+## Run Modes
+| Command | Where | What |
+|---------|-------|------|
+| `python src/main.py` | Laptop | Dummy data (development) |
+| `python src/main.py --real-sensor` | Pi (with display) | Real sensor, GUI on the Pi |
+| `python src/sensor_server.py` | Pi | Stream sensor over the network |
+| `python src/main.py --network <PI_IP>` | Laptop | GUI on laptop, live data from the Pi |
 
 ## Quick Start (Development on Laptop with Dummy Data)
 ```bash
