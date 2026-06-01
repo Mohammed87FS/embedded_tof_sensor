@@ -10,7 +10,7 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QGroupBox, QGridLayout,
+    QLabel, QPushButton, QGroupBox, QGridLayout, QSpinBox,
 )
 
 from sensor import BaseSensor
@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
     # ~20 Hz UI; VL53L3CX timing budget 50 ms caps useful rate near 15–20 Hz
     UPDATE_INTERVAL_MS = 50
     DISPLAY_MAX_MM = 5000
+    SENSOR_MAX_MM = 5000        # hard cap: don't let the UI exceed the sensor's range
 
     def __init__(self, sensor: BaseSensor, auto_start: bool = False,
                  gpio: bool = False):
@@ -81,6 +82,19 @@ class MainWindow(QMainWindow):
         ctrl_layout.addWidget(self._stop_btn)
         left.addWidget(ctrl_group)
 
+        # Adjustable display range (capped at the sensor's real maximum)
+        range_group = QGroupBox("Display Range")
+        range_layout = QHBoxLayout(range_group)
+        range_layout.addWidget(QLabel("Max:"))
+        self._range_spin = QSpinBox()
+        self._range_spin.setRange(250, self.SENSOR_MAX_MM)
+        self._range_spin.setSingleStep(250)
+        self._range_spin.setValue(self.DISPLAY_MAX_MM)
+        self._range_spin.setSuffix(" mm")
+        self._range_spin.valueChanged.connect(self._on_range_changed)
+        range_layout.addWidget(self._range_spin)
+        left.addWidget(range_group)
+
         left.addStretch()
         root.addLayout(left, stretch=1)
 
@@ -135,6 +149,10 @@ class MainWindow(QMainWindow):
     def _poll_button(self) -> None:
         if self._gpio.take_button_event():
             self._on_stop() if self._running else self._on_start()
+
+    def _on_range_changed(self, value: int) -> None:
+        self._plot_widget.setYRange(0, value)
+        self._sonar.set_max_range(value)
 
     def _on_start(self) -> None:
         self._sensor.start()
