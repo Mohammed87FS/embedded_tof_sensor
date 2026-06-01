@@ -45,11 +45,6 @@ def main():
         help="Measurement timing budget in microseconds (default: 50000)",
     )
     parser.add_argument(
-        "--gpio",
-        action="store_true",
-        help="Drive LED bar / buzzer / button / status LED (Raspberry Pi only)",
-    )
-    parser.add_argument(
         "--network",
         metavar="HOST",
         help="Stream from a Pi running sensor_server.py at HOST (e.g. 192.168.7.2). "
@@ -77,7 +72,7 @@ def main():
 
     auto_start = args.real_sensor or bool(args.network)
     app = QApplication(sys.argv)
-    window = MainWindow(sensor, auto_start=auto_start, gpio=args.gpio)
+    window = MainWindow(sensor, auto_start=auto_start)
     window.show()
     sys.exit(app.exec())
 

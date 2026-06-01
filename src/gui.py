@@ -15,7 +15,6 @@ from PyQt6.QtWidgets import (
 
 from sensor import BaseSensor
 from sonar_widget import SonarWidget
-from gpio_controller import GPIOController
 
 
 class MainWindow(QMainWindow):
@@ -25,11 +24,9 @@ class MainWindow(QMainWindow):
     DISPLAY_MAX_MM = 700        # default display range; user-adjustable up to SENSOR_MAX_MM
     SENSOR_MAX_MM = 5000        # hard cap: don't let the UI exceed the sensor's range
 
-    def __init__(self, sensor: BaseSensor, auto_start: bool = False,
-                 gpio: bool = False):
+    def __init__(self, sensor: BaseSensor, auto_start: bool = False):
         super().__init__()
         self._sensor = sensor
-        self._gpio = GPIOController(enabled=gpio)
         self._running = False
         self._data_buffer = np.zeros(self.BUFFER_SIZE)
         self._buf_idx = 0
@@ -141,16 +138,6 @@ class MainWindow(QMainWindow):
         self._timer.setInterval(self.UPDATE_INTERVAL_MS)
         self._timer.timeout.connect(self._tick)
 
-        # Always-on poll for the physical button (works while stopped too)
-        self._btn_timer = QTimer(self)
-        self._btn_timer.setInterval(100)
-        self._btn_timer.timeout.connect(self._poll_button)
-        self._btn_timer.start()
-
-    def _poll_button(self) -> None:
-        if self._gpio.take_button_event():
-            self._on_stop() if self._running else self._on_start()
-
     def _on_range_changed(self, value: int) -> None:
         self._plot_widget.setYRange(0, value)
         self._sonar.set_max_range(value)
@@ -165,7 +152,6 @@ class MainWindow(QMainWindow):
     def _on_stop(self) -> None:
         self._timer.stop()
         self._sensor.stop()
-        self._gpio.all_off()
         self._running = False
         self._start_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
@@ -209,10 +195,8 @@ class MainWindow(QMainWindow):
 
         self._plot_curve.setData(ordered)
         self._sonar.update_distance(reading.distance_mm)
-        self._gpio.update(reading.distance_mm, reading.status)
 
     def closeEvent(self, event) -> None:
         if self._running:
             self._on_stop()
-        self._gpio.close()
         event.accept()
