@@ -20,6 +20,7 @@ class SonarWidget(QWidget):
         super().__init__(parent)
         self.setMinimumSize(300, 300)
         self._distance_mm = 0
+        self._max_range = self.MAX_RANGE_MM
         self._history: deque[int] = deque(maxlen=self.HISTORY_SIZE)
         self._sweep_angle = 0.0
 
@@ -34,6 +35,10 @@ class SonarWidget(QWidget):
         self._distance_mm = distance_mm
         self._history.append(distance_mm)
         self._sweep_angle = (self._sweep_angle + 6) % 360
+        self.update()
+
+    def set_max_range(self, mm: int) -> None:
+        self._max_range = max(100, int(mm))
         self.update()
 
     def paintEvent(self, event) -> None:
@@ -59,7 +64,7 @@ class SonarWidget(QWidget):
         painter.setPen(QPen(self._text_color, 1))
         for i in range(1, self.RING_COUNT + 1):
             r = radius * i / self.RING_COUNT
-            label = f"{int(self.MAX_RANGE_MM * i / self.RING_COUNT)} mm"
+            label = f"{int(self._max_range * i / self.RING_COUNT)} mm"
             painter.drawText(QPointF(cx + 4, cy - r + 12), label)
 
         # Crosshairs
@@ -86,8 +91,8 @@ class SonarWidget(QWidget):
             painter.drawLine(QPointF(cx, cy), QPointF(trail_x, trail_y))
 
         # Distance blip on sweep line
-        if 0 < self._distance_mm < self.MAX_RANGE_MM:
-            blip_r = (self._distance_mm / self.MAX_RANGE_MM) * radius
+        if 0 < self._distance_mm < self._max_range:
+            blip_r = (self._distance_mm / self._max_range) * radius
             bx = cx + blip_r * math.cos(angle_rad)
             by = cy - blip_r * math.sin(angle_rad)
 
@@ -100,10 +105,10 @@ class SonarWidget(QWidget):
 
         # Faded history blips
         for idx, dist in enumerate(self._history):
-            if dist <= 0 or dist >= self.MAX_RANGE_MM:
+            if dist <= 0 or dist >= self._max_range:
                 continue
             hist_angle = math.radians(self._sweep_angle - (len(self._history) - idx) * 6)
-            hist_r = (dist / self.MAX_RANGE_MM) * radius
+            hist_r = (dist / self._max_range) * radius
             hx = cx + hist_r * math.cos(hist_angle)
             hy = cy - hist_r * math.sin(hist_angle)
             age_alpha = max(10, int(40 * (idx / max(len(self._history), 1))))
