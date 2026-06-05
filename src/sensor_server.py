@@ -38,8 +38,17 @@ def main():
                         req = conn.recv(16)
                         if not req:
                             break
-                        r = sensor.read()
-                        conn.sendall(f"{r.distance_mm},{r.status}\n".encode())
+                        cmd = req.decode(errors="ignore").strip()
+                        if cmd.startswith("c"):
+                            try:
+                                mode_s, budget_s = cmd[1:].split(",")
+                                sensor.configure(int(mode_s), int(budget_s))
+                            except ValueError:
+                                pass
+                            conn.sendall(b"ok\n")
+                        else:
+                            r = sensor.read()
+                            conn.sendall(f"{r.distance_mm},{r.status}\n".encode())
             except OSError:
                 pass
             print("Client disconnected - waiting for next connection.")

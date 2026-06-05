@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,
 )
 
 from sensor import BaseSensor
@@ -18,7 +18,9 @@ class MainWindow(QMainWindow):
     BUFFER_SIZE = 200
     # ~20 Hz UI; VL53L3CX timing budget 50 ms caps useful rate near 15–20 Hz
     UPDATE_INTERVAL_MS = 50
-    DISPLAY_MAX_MM = 2000
+    # Plot Y-axis ceiling per distance mode (1 short, 2 medium, 3 long)
+    MODE_MAX_MM = {1: 1500, 2: 3000, 3: 5000}
+    DEFAULT_MODE = 3
 
     def __init__(self, sensor: BaseSensor, auto_start: bool = False):
         super().__init__()
@@ -50,10 +52,24 @@ class MainWindow(QMainWindow):
         self._plot_widget = pg.PlotWidget(title="Distance Over Time")
         self._plot_widget.setLabel("left", "Distance", units="mm")
         self._plot_widget.setLabel("bottom", "Samples")
-        self._plot_widget.setYRange(0, self.DISPLAY_MAX_MM)
+        self._plot_widget.setYRange(0, self.MODE_MAX_MM[self.DEFAULT_MODE])
         self._plot_widget.setBackground("#1a1a1a")
         self._plot_curve = self._plot_widget.plot(pen=pg.mkPen(color="#00ff55", width=2))
         layout.addWidget(self._plot_widget, stretch=1)
+
+        self._mode_combo = QComboBox()
+        for label, mode in [("Short", 1), ("Medium", 2), ("Long", 3)]:
+            self._mode_combo.addItem(label, mode)
+        self._mode_combo.setCurrentIndex(2)  # Long = default
+
+        self._budget_combo = QComboBox()
+        for label, us in [("33 ms", 33_000), ("50 ms", 50_000),
+                          ("100 ms", 100_000), ("200 ms", 200_000)]:
+            self._budget_combo.addItem(label, us)
+        self._budget_combo.setCurrentIndex(1)  # 50 ms = default
+
+        self._mode_combo.currentIndexChanged.connect(self._on_config_changed)
+        self._budget_combo.currentIndexChanged.connect(self._on_config_changed)
 
         ctrl = QHBoxLayout()
         self._start_btn = QPushButton("Start")
@@ -63,6 +79,11 @@ class MainWindow(QMainWindow):
         self._stop_btn.clicked.connect(self._on_stop)
         ctrl.addWidget(self._start_btn)
         ctrl.addWidget(self._stop_btn)
+        ctrl.addStretch()
+        ctrl.addWidget(QLabel("Range:"))
+        ctrl.addWidget(self._mode_combo)
+        ctrl.addWidget(QLabel("Budget:"))
+        ctrl.addWidget(self._budget_combo)
         layout.addLayout(ctrl)
 
         self.setStyleSheet("""
@@ -80,6 +101,12 @@ class MainWindow(QMainWindow):
         self._timer = QTimer(self)
         self._timer.setInterval(self.UPDATE_INTERVAL_MS)
         self._timer.timeout.connect(self._tick)
+
+    def _on_config_changed(self) -> None:
+        mode = self._mode_combo.currentData()
+        budget = self._budget_combo.currentData()
+        self._sensor.configure(mode, budget)
+        self._plot_widget.setYRange(0, self.MODE_MAX_MM[mode])
 
     def _on_start(self) -> None:
         self._sensor.start()
