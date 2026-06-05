@@ -104,24 +104,21 @@ class VL53L3CXSensor(BaseSensor):
         if self._tof is None:
             raise RuntimeError("Sensor not started")
 
+        now = time.time()
+        # _last only ever holds the last VALID reading.
+        fresh = (self._last is not None
+                 and (now - self._last.timestamp) < self._stale_timeout_s)
+
         if not self._tof.is_ranging_ready():
-            # Return cached reading only if fresh; otherwise report "waiting"
-            if (self._last is not None
-                    and (time.time() - self._last.timestamp) < self._stale_timeout_s):
-                return self._last
-            return SensorReading(distance_mm=0, status=2)
+            return self._last if fresh else SensorReading(distance_mm=0, status=2)
 
         raw = int(self._tof.get_distance())
 
-        if raw < 0:
-            err = SensorReading(distance_mm=0, status=1)
-            self._last = err
-            return err
-
-        if raw == 0 or raw >= _ST_INVALID_HIGH or raw == _NO_TARGET_MM:
-            no_tgt = SensorReading(distance_mm=0, status=4)
-            self._last = no_tgt
-            return no_tgt
+        # Invalid frame: driver -1, no object, or wraparound sentinel. The
+        # VL53L3CX drops frames intermittently even with a steady target, so
+        # hold the last good value briefly instead of flickering to 0.
+        if raw <= 0 or raw >= _ST_INVALID_HIGH or raw == _NO_TARGET_MM:
+            return self._last if fresh else SensorReading(distance_mm=0, status=4)
 
         reading = SensorReading(distance_mm=raw, status=0)
         self._last = reading
