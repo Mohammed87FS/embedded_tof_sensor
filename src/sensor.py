@@ -41,6 +41,9 @@ class BaseSensor(ABC):
     @abstractmethod
     def stop(self) -> None: ...
 
+    def configure(self, distance_mode: int, timing_budget_us: int) -> None:
+        """Optional runtime reconfiguration. No-op unless overridden."""
+
 
 class VL53L3CXSensor(BaseSensor):
     """
@@ -83,6 +86,17 @@ class VL53L3CXSensor(BaseSensor):
         # Long range (3), then timing budget — order matches ST API expectations
         self._tof.set_distance_mode(self._distance_mode)
         self._tof.set_timing_budget(self._timing_budget_us)
+        self._tof.start_ranging()
+        self._last = None
+
+    def configure(self, distance_mode: int, timing_budget_us: int) -> None:
+        self._distance_mode = distance_mode
+        self._timing_budget_us = timing_budget_us
+        if self._tof is None:
+            return
+        self._tof.stop_ranging()
+        self._tof.set_distance_mode(distance_mode)
+        self._tof.set_timing_budget(timing_budget_us)
         self._tof.start_ranging()
         self._last = None
 
@@ -146,6 +160,20 @@ class NetworkSensor(BaseSensor):
         self._sock = socket.create_connection((self._host, self._port), timeout=self._timeout)
         self._sock.settimeout(self._timeout)
         self._buf = b""
+
+    def configure(self, distance_mode: int, timing_budget_us: int) -> None:
+        if self._sock is None:
+            return
+        try:
+            self._sock.sendall(f"c{distance_mode},{timing_budget_us}\n".encode())
+            while b"\n" not in self._buf:
+                data = self._sock.recv(64)
+                if not data:
+                    return
+                self._buf += data
+            _, self._buf = self._buf.split(b"\n", 1)
+        except OSError:
+            pass
 
     def read(self) -> SensorReading:
         if self._sock is None:
