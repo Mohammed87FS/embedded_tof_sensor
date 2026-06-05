@@ -7,8 +7,6 @@ Install on the Pi (full driver; PyPI sdist is incomplete — use Git):
   pip install -r requirements-rpi.txt
 """
 
-import random
-import math
 import time
 import socket
 from abc import ABC, abstractmethod
@@ -20,20 +18,13 @@ _ST_INVALID_HIGH = 8000
 
 
 class SensorReading:
-    __slots__ = ("distance_mm", "signal_rate", "ambient_rate", "status", "timestamp")
+    __slots__ = ("distance_mm", "status", "timestamp")
 
-    # status: 0 = OK, 1 = error, 2 = waiting, 3 = invalid sample, 4 = no target
-    def __init__(self, distance_mm: int, signal_rate: float = 0.0,
-                 ambient_rate: float = 0.0, status: int = 0):
+    # status: 0 = OK, 1 = error, 2 = waiting, 4 = no target
+    def __init__(self, distance_mm: int, status: int = 0):
         self.distance_mm = distance_mm
-        self.signal_rate = signal_rate
-        self.ambient_rate = ambient_rate
         self.status = status
         self.timestamp = time.time()
-
-    @property
-    def distance_m(self) -> float:
-        return self.distance_mm / 1000.0
 
     @property
     def valid(self) -> bool:
@@ -49,33 +40,6 @@ class BaseSensor(ABC):
 
     @abstractmethod
     def stop(self) -> None: ...
-
-
-class DummySensor(BaseSensor):
-    """Generates fake distance data that simulates an object moving back and forth."""
-
-    def __init__(self):
-        self._running = False
-        self._t = 0.0
-
-    def start(self) -> None:
-        self._running = True
-        self._t = 0.0
-
-    def read(self) -> SensorReading:
-        base = 500 + 400 * math.sin(self._t * 0.5)
-        noise = random.gauss(0, 15)
-        distance = max(10, int(base + noise))
-        self._t += 0.1
-        return SensorReading(
-            distance_mm=distance,
-            signal_rate=random.uniform(1.0, 5.0),
-            ambient_rate=random.uniform(0.1, 0.5),
-            status=0,
-        )
-
-    def stop(self) -> None:
-        self._running = False
 
 
 class VL53L3CXSensor(BaseSensor):

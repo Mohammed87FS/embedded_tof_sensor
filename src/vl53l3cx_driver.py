@@ -24,15 +24,11 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-from ctypes import CDLL, CFUNCTYPE, POINTER, c_int, c_uint, pointer, c_ubyte, c_uint8, c_uint32, c_uint16
+from ctypes import CDLL, CFUNCTYPE, POINTER, c_int, c_ubyte, c_uint16
 from smbus2 import SMBus, i2c_msg
 import os
 import site
 import glob
-
-
-class VL53L3CXError(RuntimeError):
-    pass
 
 
 # Read/write function pointer types.
@@ -83,12 +79,6 @@ class VL53L3CX:
             self._i2c.close()
 
         self._dev = None
-        # Register Address
-        self.ADDR_UNIT_ID_HIGH = 0x16  # Serial number high byte
-        self.ADDR_UNIT_ID_LOW = 0x17   # Serial number low byte
-        self.ADDR_I2C_ID_HIGH = 0x18   # Write serial number high byte for I2C address unlock
-        self.ADDR_I2C_ID_LOW = 0x19    # Write serial number low byte for I2C address unlock
-        self.ADDR_I2C_SEC_ADDR = 0x8a  # Write new I2C address after unlock
 
     def open(self, reset=False):
         self._i2c.open(bus=self._i2c_bus)
@@ -162,15 +152,3 @@ class VL53L3CX:
     def set_timing_budget(self, timing_budget):
         """Set the timing budget in microseocnds"""
         _TOF_LIBRARY.setMeasurementTimingBudgetMicroSeconds(self._dev, timing_budget)
-
-    def change_address(self, new_address):
-        status = _TOF_LIBRARY.setDeviceAddress(self._dev, new_address)
-        if status == 0:
-            self.i2c_address = new_address
-        else:
-            raise RuntimeError("change_address failed with code: {}".format(status))
-        return True
-        
-    def wait_for_data(self):
-        """Interupt the program and wait for ranging data"""
-        return _TOF_LIBRARY.waitForData(self._dev)
