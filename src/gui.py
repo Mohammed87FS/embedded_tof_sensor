@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
         # Wieder (Beschriftung, Mikrosekunden)-Paare. 33_000 == 33000
         # (Unterstriche sind nur optische Ziffern-Trenner).
         for label, us in [("33 ms", 33_000), ("50 ms", 50_000),
-                          ("100 ms", 100_000), ("200 ms", 200_000)]:
+                          ("100 ms", 100_000), ("1000 ms", 1000_000)]:
             self._budget_combo.addItem(label, us)
         # Index 1 ("50 ms") vorauswaehlen, das Standard-Budget des Sensors.
         self._budget_combo.setCurrentIndex(1)  # 50 ms = default
