@@ -62,8 +62,7 @@ def main():
     # erneut zu binden. Ohne diese Option reserviert das Betriebssystem den Port
     # noch ein bis zwei Minuten (der TCP-Zustand TIME_WAIT), und bind() wuerde mit
     # "Address already in use" scheitern. Die '1' schaltet die Option EIN.
-    # (Das ist genau der Fehler, der bei dir auftrat, als noch ein alter Server
-    #  lief.)
+    # (Genau der Fehler kam, als noch ein alter Server lief.)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # Binde das Socket an unsere Adresse+Port. Beachte die DOPPELTEN Klammern:
     # bind() nimmt EIN Argument, das ein Tupel (HOST, PORT) ist.
